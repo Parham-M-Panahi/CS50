@@ -8,15 +8,24 @@
 int main(int argc, char *argv[])
 {
     // ensure proper usage
-    if (argc != 3)
+    if (argc != 4)
     {
-        fprintf(stderr, "Usage: copy infile outfile\n");
+        fprintf(stderr, "Usage: resize n infile outfile\n");
         return 1;
     }
 
+    // remember n
+    int factor = atoi(argv[1]);
+
+    if (factor > 100 || factor < 1)
+    {
+	fprintf(stderr, "n must be a natural number less than 100\n");
+	return 1;
+    } 
+
     // remember filenames
-    char *infile = argv[1];
-    char *outfile = argv[2];
+    char *infile = argv[2];
+    char *outfile = argv[3];
 
     // open input file
     FILE *inptr = fopen(infile, "r");
@@ -53,40 +62,62 @@ int main(int argc, char *argv[])
         return 4;
     }
 
+    // TODO:
+    LONG oldWidth = bi.biWidth;
+    LONG oldHeight = bi.biHeight;
+
+    int padding = (4 - (bi.biWidth * sizeof(RGBTRIPLE)) % 4) % 4;
+    
+    bi.biWidth = bi.biWidth * factor;
+    bi.biHeight = bi.biHeight * factor;
+
+    int new_padding = (4 - (bi.biWidth * sizeof(RGBTRIPLE)) % 4) % 4;
+
+    bi.biSizeImage = ((sizeof(RGBTRIPLE) * bi.biWidth) + new_padding) * abs(bi.biHeight);
+
+    bf.bfSize = bi.biSizeImage + sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
+
     // write outfile's BITMAPFILEHEADER
     fwrite(&bf, sizeof(BITMAPFILEHEADER), 1, outptr);
 
     // write outfile's BITMAPINFOHEADER
     fwrite(&bi, sizeof(BITMAPINFOHEADER), 1, outptr);
 
-    // determine padding for scanlines
-    int padding = (4 - (bi.biWidth * sizeof(RGBTRIPLE)) % 4) % 4;
+
+    int seekBack = -1 * (int)sizeof(RGBTRIPLE) * oldWidth;
+
 
     // iterate over infile's scanlines
-    for (int i = 0, biHeight = abs(bi.biHeight); i < biHeight; i++)
+    for (int i = 0, biHeight = abs(oldHeight); i < biHeight; i++)
     {
-        // iterate over pixels in scanline
-        for (int j = 0; j < bi.biWidth; j++)
-        {
-            // temporary storage
-            RGBTRIPLE triple;
+	for (int z = 0; z < factor; z++)
+	{
+		// iterate over pixels in scanline
+		for (int j = 0; j < oldWidth; j++)
+		{
+		    // temporary storage
+		    RGBTRIPLE triple;
 
-            // read RGB triple from infile
-            fread(&triple, sizeof(RGBTRIPLE), 1, inptr);
+		    // read RGB triple from infile
+		    fread(&triple, sizeof(RGBTRIPLE), 1, inptr);
 
-            // write RGB triple to outfile
-            fwrite(&triple, sizeof(RGBTRIPLE), 1, outptr);
-        }
+		    // write RGB triple to outfile
+		    for (int w = 0; w < factor; w++)
+		        fwrite(&triple, sizeof(RGBTRIPLE), 1, outptr);
+		}
+		
+		if (z == factor - 1)
+		    fseek(inptr, padding, SEEK_CUR);
+		else
+		    fseek(inptr, seekBack, SEEK_CUR);
 
-        // skip over padding, if any
-        fseek(inptr, padding, SEEK_CUR);
-
-        // then add it back (to demonstrate how)
-        for (int k = 0; k < padding; k++)
-        {
-            fputc(0x00, outptr);
-        }
-    }
+		// then add it back (to demonstrate how)
+		for (int k = 0; k < new_padding; k++)
+		{
+		    fputc(0x00, outptr);
+		}
+	}
+     }
 
     // close infile
     fclose(inptr);
