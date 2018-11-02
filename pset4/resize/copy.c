@@ -1,4 +1,4 @@
-// Copies a BMP file
+// copy a BMP file
 
 #include <stdio.h>
 #include <stdlib.h>
