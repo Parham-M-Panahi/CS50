@@ -81,6 +81,19 @@ void deleteList(node* head)
 	}
 }
 
+int countListItems(node* head)
+{
+	int count = 0;
+
+	node* ptr = head;
+	while (ptr != NULL)
+	{
+		count++;
+		ptr = ptr -> next;		
+	}
+	return count;
+}
+
 /*
 
 node* list;

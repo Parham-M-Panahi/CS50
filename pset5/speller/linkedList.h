@@ -27,3 +27,6 @@ bool findWordInList(const char* word, node* head);
 
 // deletes the entire list pointed to by 'head'.
 void deleteList(node* head);
+
+// count the number of elements in list.
+int countListItems(node* head);
